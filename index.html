@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メールアドレス拡張エイリアス生成ツール</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fb;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .description {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        textarea, input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .grid-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-copy {
+            background-color: var(--success-color);
+            margin-top: 12px;
+        }
+
+        .btn-copy:hover {
+            background-color: #059669;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .toast {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            background-color: #ecfdf5;
+            color: var(--success-color);
+            border: 1px solid #a7f3d0;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .privacy-note {
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>プラスアドレス（拡張エイリアス）一括生成ツール</h1>
+        <p class="description">元のメールアドレスを、指定したランダム文字列のプラスアドレスに一括変換します。</p>
+    </header>
+
+    <div class="privacy-note">
+        ※入力されたメールアドレスはブラウザ内（ローカル）でのみ処理され、外部サーバーには一切送信されません。
+    </div>
+
+    <div class="card">
+        <div class="form-group">
+            <label for="inputEmails">元のメールアドレス（改行区切りで複数ペースト可）</label>
+            <textarea id="inputEmails" rows="6" placeholder="example@icloud.com&#10;test@gmail.com"></textarea>
+        </div>
+
+        <div class="grid-config">
+            <div class="form-group">
+                <label for="letterCount">英語の文字数</label>
+                <input type="number" id="letterCount" min="0" value="4">
+            </div>
+            <div class="form-group">
+                <label for="letterCase">英語の種類</label>
+                <select id="letterCase">
+                    <option value="lower">小文字のみ (a-z)</option>
+                    <option value="upper">大文字のみ (A-Z)</option>
+                    <option value="mixed">大混雑（大小混合）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="digitCount">数字の文字数</label>
+                <input type="number" id="digitCount" min="0" value="2">
+            </div>
+            <div class="form-group">
+                <label for="generateCount">1アドレスあたりの生成個数</label>
+                <input type="number" id="generateCount" min="1" value="3">
+            </div>
+        </div>
+
+        <button class="btn" onclick="generateAddresses()">プラスアドレスを生成する</button>
+    </div>
+
+    <div id="toast" class="toast">クリップボードにコピーしました！</div>
+
+    <div class="card" id="outputCard" style="display: none;">
+        <div class="output-header">
+            <label style="margin-bottom: 0;">生成結果</label>
+        </div>
+        <textarea id="outputEmails" rows="10" readonly></textarea>
+        <button class="btn btn-copy" onclick="copyToClipboard()">結果を一括コピーする</button>
+    </div>
+</div>
+
+<script>
+    function generateRandomString(letterCount, letterCase, digitCount) {
+        const lowerChars = 'abcdefghijklmnopqrstuvwxyz';
+        const upperChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const digits = '0123456789';
+
+        let pool = [];
+
+        // 1. 指定された文字数分のパーツを配列に確保
+        let selectedLetters = '';
+        if (letterCase === 'lower') {
+            selectedLetters = lowerChars;
+        } else if (letterCase === 'upper') {
+            selectedLetters = upperChars;
+        } else {
+            selectedLetters = lowerChars + upperChars;
+        }
+
+        for (let i = 0; i < letterCount; i++) {
+            pool.push(selectedLetters.charAt(Math.floor(Math.random() * selectedLetters.length)));
+        }
+
+        for (let i = 0; i < digitCount; i++) {
+            pool.push(digits.charAt(Math.floor(Math.random() * digits.length)));
+        }
+
+        // 2. 配列（パーツ）を完全シャッフル（Fisher-Yatesシャッフル）
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        return pool.join('');
+    }
+
+    function generateAddresses() {
+        const inputText = document.getElementById('inputEmails').value;
+        const letterCount = parseInt(document.getElementById('letterCount').value) || 0;
+        const letterCase = document.getElementById('letterCase').value;
+        const digitCount = parseInt(document.getElementById('digitCount').value) || 0;
+        const generateCount = parseInt(document.getElementById('generateCount').value) || 1;
+
+        // 改行で分割し、空行やトリムした結果空になるものを除外
+        const lines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        let results = [];
+
+        if (lines.length === 0) {
+            alert('元のメールアドレスを入力してください。');
+            return;
+        }
+
+        lines.forEach(email => {
+            // 簡易的な@チェックと分割
+            const atIndex = email.lastIndexOf('@');
+            if (atIndex === -1) {
+                // @が含まれない行はスキップか、そのまま処理（ここではスキップ）
+                return;
+            }
+
+            const localPart = email.substring(0, atIndex);
+            const domainPart = email.substring(atIndex); // @を含む部分
+
+            // 指定された個数分生成
+            for (let i = 0; i < generateCount; i++) {
+                const randomStr = generateRandomString(letterCount, letterCase, digitCount);
+                // プラスアドレスの組み立て
+                results.push(`${localPart}+${randomStr}${domainPart}`);
+            }
+        });
+
+        // 画面への出力処理
+        const outputCard = document.getElementById('outputCard');
+        const outputTextarea = document.getElementById('outputEmails');
+        
+        if (results.length > 0) {
+            outputTextarea.value = results.join('\n');
+            outputCard.style.display = 'block';
+            // 生成結果までスムーズにスクロール
+            outputCard.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('有効なメールアドレスが検出されませんでした。');
+        }
+    }
+
+    function copyToClipboard() {
+        const outputTextarea = document.getElementById('outputEmails');
+        outputTextarea.select();
+        outputTextarea.setSelectionRange(0, 99999); // モバイル対応
+
+        navigator.clipboard.writeText(outputTextarea.value).then(() => {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }).catch(err => {
+            alert('コピーに失敗しました。手動で選択してコピーしてください。');
+        });
+    }
+</script>
+
+</body>
+</html>
