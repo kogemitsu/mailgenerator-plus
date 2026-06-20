@@ -82,6 +82,32 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+            color: #475569;
         }
 
         .btn {
@@ -183,6 +209,11 @@
             </div>
         </div>
 
+        <div class="checkbox-group">
+            <input type="checkbox" id="shuffleResults">
+            <label for="shuffleResults">生成結果の並び順をランダムに並び替える（シャッフル）</label>
+        </div>
+
         <button class="btn" onclick="generateAddresses()">プラスアドレスを生成する</button>
     </div>
 
@@ -205,7 +236,6 @@
 
         let pool = [];
 
-        // 1. 指定された文字数分のパーツを配列に確保
         let selectedLetters = '';
         if (letterCase === 'lower') {
             selectedLetters = lowerChars;
@@ -223,7 +253,6 @@
             pool.push(digits.charAt(Math.floor(Math.random() * digits.length)));
         }
 
-        // 2. 配列（パーツ）を完全シャッフル（Fisher-Yatesシャッフル）
         for (let i = pool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -232,14 +261,24 @@
         return pool.join('');
     }
 
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
     function generateAddresses() {
         const inputText = document.getElementById('inputEmails').value;
         const letterCount = parseInt(document.getElementById('letterCount').value) || 0;
         const letterCase = document.getElementById('letterCase').value;
         const digitCount = parseInt(document.getElementById('digitCount').value) || 0;
         const generateCount = parseInt(document.getElementById('generateCount').value) || 1;
+        
+        // 【修正箇所】IDの指定と変数名を「shuffleResults」に統一しました
+        const shuffleResults = document.getElementById('shuffleResults').checked;
 
-        // 改行で分割し、空行やトリムした結果空になるものを除外
         const lines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         let results = [];
 
@@ -249,32 +288,30 @@
         }
 
         lines.forEach(email => {
-            // 簡易的な@チェックと分割
             const atIndex = email.lastIndexOf('@');
             if (atIndex === -1) {
-                // @が含まれない行はスキップか、そのまま処理（ここではスキップ）
                 return;
             }
 
             const localPart = email.substring(0, atIndex);
-            const domainPart = email.substring(atIndex); // @を含む部分
+            const domainPart = email.substring(atIndex);
 
-            // 指定された個数分生成
             for (let i = 0; i < generateCount; i++) {
                 const randomStr = generateRandomString(letterCount, letterCase, digitCount);
-                // プラスアドレスの組み立て
                 results.push(`${localPart}+${randomStr}${domainPart}`);
             }
         });
 
-        // 画面への出力処理
+        if (shuffleResults) {
+            results = shuffleArray(results);
+        }
+
         const outputCard = document.getElementById('outputCard');
         const outputTextarea = document.getElementById('outputEmails');
         
         if (results.length > 0) {
             outputTextarea.value = results.join('\n');
             outputCard.style.display = 'block';
-            // 生成結果までスムーズにスクロール
             outputCard.scrollIntoView({ behavior: 'smooth' });
         } else {
             alert('有効なメールアドレスが検出されませんでした。');
@@ -284,7 +321,7 @@
     function copyToClipboard() {
         const outputTextarea = document.getElementById('outputEmails');
         outputTextarea.select();
-        outputTextarea.setSelectionRange(0, 99999); // モバイル対応
+        outputTextarea.setSelectionRange(0, 99999);
 
         navigator.clipboard.writeText(outputTextarea.value).then(() => {
             const toast = document.getElementById('toast');
