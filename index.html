@@ -210,8 +210,8 @@
         </div>
 
         <div class="checkbox-group">
-            <input type="checkbox" id="shuffleResults">
-            <label for="shuffleResults">生成結果の並び順をランダムに並び替える（シャッフル）</label>
+            <input type="checkbox" id="distributeResults" checked>
+            <label for="distributeResults">同一の元メールアドレス同士を最も遠ざける（均等に分散配置する）</label>
         </div>
 
         <button class="btn" onclick="generateAddresses()">プラスアドレスを生成する</button>
@@ -261,34 +261,27 @@
         return pool.join('');
     }
 
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
-
     function generateAddresses() {
         const inputText = document.getElementById('inputEmails').value;
         const letterCount = parseInt(document.getElementById('letterCount').value) || 0;
         const letterCase = document.getElementById('letterCase').value;
         const digitCount = parseInt(document.getElementById('digitCount').value) || 0;
         const generateCount = parseInt(document.getElementById('generateCount').value) || 1;
-        
-        // 【修正箇所】IDの指定と変数名を「shuffleResults」に統一しました
-        const shuffleResults = document.getElementById('shuffleResults').checked;
+        const distributeResults = document.getElementById('distributeResults').checked;
 
+        // 改行で分割し、前後の空白を除去、空行を排除
         const lines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        let results = [];
-
+        
         if (lines.length === 0) {
             alert('元のメールアドレスを入力してください。');
             return;
         }
 
+        let categorizedResults = [];
+
         lines.forEach(email => {
             const atIndex = email.lastIndexOf('@');
+            // 【安全処理】正しくない形式のアドレス行が含まれていた場合、エラーにせず安全にスキップ
             if (atIndex === -1) {
                 return;
             }
@@ -296,25 +289,46 @@
             const localPart = email.substring(0, atIndex);
             const domainPart = email.substring(atIndex);
 
+            let subResults = [];
             for (let i = 0; i < generateCount; i++) {
                 const randomStr = generateRandomString(letterCount, letterCase, digitCount);
-                results.push(`${localPart}+${randomStr}${domainPart}`);
+                subResults.push(`${localPart}+${randomStr}${domainPart}`);
             }
+            categorizedResults.push(subResults);
         });
 
-        if (shuffleResults) {
-            results = shuffleArray(results);
+        let finalResults = [];
+
+        // 【バグ防止】有効なアドレスが1つも生成されなかった場合の考慮
+        if (categorizedResults.length > 0) {
+            if (distributeResults) {
+                // 【均等分散配置（ラウンドロビン）】
+                // 縦軸（生成個数）をベースに、横軸（入力アドレス数）を1つずつ綺麗に回収
+                for (let i = 0; i < generateCount; i++) {
+                    for (let j = 0; j < categorizedResults.length; j++) {
+                        if (categorizedResults[j] && categorizedResults[j][i]) {
+                            finalResults.push(categorizedResults[j][i]);
+                        }
+                    }
+                }
+            } else {
+                // 【通常配置】上から順番に並べる
+                categorizedResults.forEach(subList => {
+                    finalResults = finalResults.concat(subList);
+                });
+            }
         }
 
         const outputCard = document.getElementById('outputCard');
         const outputTextarea = document.getElementById('outputEmails');
         
-        if (results.length > 0) {
-            outputTextarea.value = results.join('\n');
+        if (finalResults.length > 0) {
+            outputTextarea.value = finalResults.join('\n');
             outputCard.style.display = 'block';
             outputCard.scrollIntoView({ behavior: 'smooth' });
         } else {
-            alert('有効なメールアドレスが検出されませんでした。');
+            alert('有効なメールアドレスの形式が検出されませんでした。(@マークが含まれているか確認してください)');
+            outputCard.style.display = 'none';
         }
     }
 
