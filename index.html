@@ -85,29 +85,42 @@
             margin-bottom: 20px;
         }
 
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
+        .radio-group-container {
             background-color: #f8fafc;
-            padding: 12px;
+            padding: 16px;
             border-radius: 6px;
             border: 1px solid var(--border-color);
+            margin-bottom: 20px;
         }
 
-        .checkbox-group input[type="checkbox"] {
+        .radio-group-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        .radio-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            font-size: 14px;
+            color: #475569;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .radio-label input[type="radio"] {
             width: 18px;
             height: 18px;
             margin-right: 10px;
             cursor: pointer;
-        }
-
-        .checkbox-group label {
-            margin-bottom: 0;
-            cursor: pointer;
-            user-select: none;
-            font-weight: 500;
-            color: #475569;
         }
 
         .btn {
@@ -209,9 +222,22 @@
             </div>
         </div>
 
-        <div class="checkbox-group">
-            <input type="checkbox" id="distributeResults" checked>
-            <label for="distributeResults">同一の元メールアドレス同士を最も遠ざける（均等に分散配置する）</label>
+        <div class="radio-group-container">
+            <div class="radio-group-title">生成結果の並び順設定</div>
+            <div class="radio-options">
+                <label class="radio-label">
+                    <input type="radio" name="orderOption" value="default">
+                    デフォルト（元アドレスごとに上から並べる）
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="orderOption" value="distribute" checked>
+                    同一の元メールアドレス同士を最も遠ざける（均等に分散配置）
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="orderOption" value="shuffle">
+                    完全シャッフル（全体の並び順を完全にランダムにする）
+                </label>
+            </div>
         </div>
 
         <button class="btn" onclick="generateAddresses()">プラスアドレスを生成する</button>
@@ -261,15 +287,24 @@
         return pool.join('');
     }
 
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
     function generateAddresses() {
         const inputText = document.getElementById('inputEmails').value;
         const letterCount = parseInt(document.getElementById('letterCount').value) || 0;
         const letterCase = document.getElementById('letterCase').value;
         const digitCount = parseInt(document.getElementById('digitCount').value) || 0;
         const generateCount = parseInt(document.getElementById('generateCount').value) || 1;
-        const distributeResults = document.getElementById('distributeResults').checked;
+        
+        // ラジオボタンの選択値を取得
+        const orderOption = document.querySelector('input[name="orderOption"]:checked').value;
 
-        // 改行で分割し、前後の空白を除去、空行を排除
         const lines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         
         if (lines.length === 0) {
@@ -281,7 +316,6 @@
 
         lines.forEach(email => {
             const atIndex = email.lastIndexOf('@');
-            // 【安全処理】正しくない形式のアドレス行が含まれていた場合、エラーにせず安全にスキップ
             if (atIndex === -1) {
                 return;
             }
@@ -299,11 +333,9 @@
 
         let finalResults = [];
 
-        // 【バグ防止】有効なアドレスが1つも生成されなかった場合の考慮
         if (categorizedResults.length > 0) {
-            if (distributeResults) {
-                // 【均等分散配置（ラウンドロビン）】
-                // 縦軸（生成個数）をベースに、横軸（入力アドレス数）を1つずつ綺麗に回収
+            if (orderOption === 'distribute') {
+                // 【均等分散配置】縦横を入れ替えて交互に回収
                 for (let i = 0; i < generateCount; i++) {
                     for (let j = 0; j < categorizedResults.length; j++) {
                         if (categorizedResults[j] && categorizedResults[j][i]) {
@@ -312,10 +344,15 @@
                     }
                 }
             } else {
-                // 【通常配置】上から順番に並べる
+                // デフォルトおよびシャッフルのベースとして、一度フラットな配列にする
                 categorizedResults.forEach(subList => {
                     finalResults = finalResults.concat(subList);
                 });
+
+                // 【完全シャッフル】フラットにした後に全体をバラバラにする
+                if (orderOption === 'shuffle') {
+                    finalResults = shuffleArray(finalResults);
+                }
             }
         }
 
@@ -327,7 +364,7 @@
             outputCard.style.display = 'block';
             outputCard.scrollIntoView({ behavior: 'smooth' });
         } else {
-            alert('有効なメールアドレスの形式が検出されませんでした。(@マークが含まれているか確認してください)');
+            alert('有効なメールアドレスの形式が検出されませんでした。');
             outputCard.style.display = 'none';
         }
     }
